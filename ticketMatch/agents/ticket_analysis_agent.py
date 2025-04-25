@@ -1,0 +1,33 @@
+class TicketAnalysisAgent:
+    def __init__(self, client):
+        self.client = client
+
+    def analyze_ticket(self, ticket_text: str) -> dict:
+        prompt = [
+            {"role": "system", "content": (
+                "You are an assistant that extracts metadata from support tickets. "
+                "Given a user message, return a JSON with: "
+                "'topic' (the main issue area), 'urgency' (low/medium/high), "
+                "and 'sentiment' (positive/neutral/negative)."
+            )},
+            {"role": "user", "content": f"Ticket: {ticket_text}"}
+        ]
+
+        response = self.client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=prompt,
+            temperature=0.2,
+            max_tokens=200
+        )
+
+        import json
+        try:
+            content = response.choices[0].message.content
+            return json.loads(content)
+        except Exception as e:
+            return {
+                "topic": "unknown",
+                "urgency": "medium",
+                "sentiment": "neutral",
+                "error": f"Could not parse response: {str(e)}"
+            }
