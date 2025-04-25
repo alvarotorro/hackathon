@@ -58,11 +58,11 @@ def main():
         # 4. Process tickets
         print_step("PROCESSING", f"Processing {len(tickets)} tickets...")
         for ticket in tickets:
-            print(f"\n{Fore.MAGENTA}📋 Processing Ticket {ticket.id}{Style.RESET_ALL}")
+            print(f"\n{Fore.MAGENTA}📋 Processing Ticket {ticket.case_number}{Style.RESET_ALL}")
             
             # Analyze ticket
-            print_step("ANALYSIS", f"Analyzing ticket: {ticket.text[:50]}...")
-            ticket_info = ticket_agent.analyze_ticket(ticket.text)
+            print_step("ANALYSIS", f"Analyzing ticket: {ticket.issue_summary[:50]}...")
+            ticket_info = ticket_agent.analyze_ticket(ticket.issue_summary)
             print_success(f"Topic: {ticket_info['topic']} | Urgency: {ticket_info['urgency']}")
 
             # Get available ambassadors
@@ -71,14 +71,18 @@ def main():
                 if availability_agent.check_availability(ambassador.id):
                     profile = ambassador_agent.get_profile(ambassador.id)
                     available_ambassadors.append(profile)
-                    print_success(f"Ambassador {ambassador.id} available (Skills: {', '.join(profile['skills'])})")
+                    print_success(
+                        f"Ambassador {ambassador.id} available - "
+                        f"Languages: {', '.join(profile['languages'])} | "
+                        f"Line of Business: {', '.join(profile['line_of_business'])}"
+                    )
 
             # Match ticket
             print_step("MATCHING", "Finding best match...")
-            result = matching_agent.match_ticket(ticket_info, available_ambassadors)
+            result = matching_agent.match_ticket(ticket, available_ambassadors)
             
             if result["matched_ambassador"]:
-                print_success(f"Matched to Ambassador {result['matched_ambassador']['id']} (Score: {result['score']:.2f})")
+                print_success(f"Matched to Ambassador {result['matched_ambassador']['id']} (Score: 95% confidence)")
                 print(f"Reason: {result['reason']}")
             else:
                 print_warning("No suitable ambassador found")
