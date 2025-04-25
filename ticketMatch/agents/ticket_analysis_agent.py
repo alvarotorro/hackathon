@@ -1,6 +1,18 @@
+from typing import List, Optional
+from core.data_models import Ticket
+
 class TicketAnalysisAgent:
-    def __init__(self, client):
-        self.client = client
+    def __init__(self):
+        self.unassigned_tickets: List[Ticket] = []
+
+    def analyze_tickets(self, tickets: List[Ticket]) -> List[Ticket]:
+        """Analyze all tickets and return unassigned ones."""
+        self.unassigned_tickets = [ticket for ticket in tickets if not ticket.assigned]
+        return self.unassigned_tickets
+
+    def get_unassigned_tickets(self) -> List[Ticket]:
+        """Return the list of unassigned tickets."""
+        return self.unassigned_tickets
 
     def analyze_ticket(self, ticket_text: str) -> dict:
         prompt = [

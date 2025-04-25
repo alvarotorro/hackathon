@@ -16,6 +16,9 @@ class Ticket:
     detailed_description: str
     urgency: str
     language: str
+    assigned: bool = False
+    assignment_datetime: Optional[datetime] = None
+    assigned_ambassador_id: Optional[str] = None
 
 @dataclass
 class Ambassador:

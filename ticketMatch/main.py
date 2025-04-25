@@ -8,6 +8,7 @@ from core.data_models import Ticket, Ambassador, Shift
 from datetime import datetime
 import os
 from colorama import init, Fore, Style
+import pandas as pd
 
 # Initialize colorama
 init()
@@ -36,57 +37,86 @@ def main():
         print_step("DATA", "Loading data from Excel...")
         data_loader = DataLoader("data/mock_data.xlsx")
         tickets, ambassadors, shifts = data_loader.load_data()
-        print_success(f"Loaded {len(tickets)} tickets, {len(ambassadors)} ambassadors, and {len(shifts)} shifts")
+        
+        # Filter only unassigned tickets
+        unassigned_tickets = [ticket for ticket in tickets if not ticket.assigned]
+        print_success(f"Loaded {len(unassigned_tickets)} unassigned tickets out of {len(tickets)} total tickets")
+        
+        # Debug: Print some ticket details
+        print("\nSample of unassigned tickets:")
+        for ticket in unassigned_tickets[:3]:  # Show first 3 unassigned tickets
+            print(f"  - Case {ticket.case_number}: {ticket.line_of_business}, {ticket.primary_product}")
 
-        # 2. Initialize Azure OpenAI
-        print_step("CONNECTION", "Initializing Azure OpenAI...")
-        connection = AzureConnection()
-        if not connection.initialize():
-            print_error("Failed to connect to Azure OpenAI")
-            return
-        client = connection.get_client()
-        print_success("Connected to Azure OpenAI")
-
-        # 3. Initialize Agents
+        # 2. Initialize Agents
         print_step("AGENTS", "Initializing agents...")
-        ticket_agent = TicketAnalysisAgent(client)
-        ambassador_agent = AmbassadorProfilingAgent(ambassadors)
-        availability_agent = AvailabilityAgent(ambassadors, shifts)
-        matching_agent = MatchingAgent(ambassador_agent, availability_agent)
+        ticket_agent = TicketAnalysisAgent()
+        ambassador_agent = AmbassadorProfilingAgent()
+        availability_agent = AvailabilityAgent()
+        matching_agent = MatchingAgent()
         print_success("All agents initialized")
 
-        # 4. Process tickets
-        print_step("PROCESSING", f"Processing {len(tickets)} tickets...")
-        for ticket in tickets:
+        # 3. Process tickets
+        print_step("PROCESSING", f"Processing {len(unassigned_tickets)} unassigned tickets...")
+        
+        # Get unassigned tickets
+        unassigned_tickets = ticket_agent.analyze_tickets(tickets)
+        print_success(f"Found {len(unassigned_tickets)} unassigned tickets")
+
+        # Get ambassador profiles
+        ambassador_profiles = ambassador_agent.analyze_conversation_history(ambassadors)
+        print_success(f"Analyzed profiles for {len(ambassador_profiles)} ambassadors")
+
+        # Process each unassigned ticket
+        for ticket in unassigned_tickets:
             print(f"\n{Fore.MAGENTA}📋 Processing Ticket {ticket.case_number}{Style.RESET_ALL}")
             
-            # Analyze ticket
-            print_step("ANALYSIS", f"Analyzing ticket: {ticket.issue_summary[:50]}...")
-            ticket_info = ticket_agent.analyze_ticket(ticket.issue_summary)
-            print_success(f"Topic: {ticket_info['topic']} | Urgency: {ticket_info['urgency']}")
-
             # Get available ambassadors
-            available_ambassadors = []
-            for ambassador in ambassadors:
-                if availability_agent.check_availability(ambassador.id):
-                    profile = ambassador_agent.get_profile(ambassador.id)
-                    available_ambassadors.append(profile)
-                    print_success(
-                        f"Ambassador {ambassador.id} available - "
-                        f"Languages: {', '.join(profile['languages'])} | "
-                        f"Line of Business: {', '.join(profile['line_of_business'])}"
-                    )
+            available_ambassadors = availability_agent.check_availability(ticket, ambassadors, shifts)
+            
+            if not available_ambassadors:
+                print_warning(f"No available ambassadors for ticket {ticket.case_number}")
+                continue
 
             # Match ticket
             print_step("MATCHING", "Finding best match...")
-            result = matching_agent.match_ticket(ticket, available_ambassadors)
+            assigned_tickets = matching_agent.process_tickets([ticket], ambassadors, shifts)
             
-            if result["matched_ambassador"]:
-                print_success(f"Matched to Ambassador {result['matched_ambassador']['id']} (Score: 95% confidence)")
-                print(f"Reason: {result['reason']}")
-            else:
-                print_warning("No suitable ambassador found")
-                print(f"Details: {result['reason']}")
+            if ticket.case_number in assigned_tickets:
+                ambassador_id, explanation = assigned_tickets[ticket.case_number]
+                if ambassador_id:
+                    # Find ambassador name
+                    ambassador = next((a for a in ambassadors if a.id == ambassador_id), None)
+                    ambassador_name = ambassador.name if ambassador else ambassador_id
+                    print_success(f"Matched to Ambassador {ambassador_name}")
+                    print(f"  {Fore.CYAN}Reason:{Style.RESET_ALL} {explanation}")
+                else:
+                    print_warning(f"No suitable match found: {explanation}")
+
+        # Save results to Excel
+        print_step("SAVING", "Saving assignment results to Excel...")
+        try:
+            # Read the original Excel file
+            df = pd.read_excel("data/mock_data.xlsx", sheet_name='Tickets')
+            
+            # Update the assigned column and ambassador column
+            for ticket_id, (ambassador_id, _) in matching_agent.assigned_tickets.items():
+                if ambassador_id:
+                    # Find ambassador name
+                    ambassador = next((a for a in ambassadors if a.id == ambassador_id), None)
+                    ambassador_name = ambassador.name if ambassador else ambassador_id
+                    
+                    # Update the row
+                    mask = df['Case Number'] == ticket_id
+                    df.loc[mask, 'assigned'] = True
+                    df.loc[mask, 'ambassador'] = ambassador_name
+            
+            # Save back to Excel
+            with pd.ExcelWriter("data/mock_data.xlsx", engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+                df.to_excel(writer, sheet_name='Tickets', index=False)
+            
+            print_success("Results saved to Excel successfully!")
+        except Exception as e:
+            print_error(f"Error saving to Excel: {str(e)}")
 
         print_success("\nAll tickets processed successfully!")
 

@@ -55,7 +55,8 @@ class DataLoader:
                 technical_proficiency=str(row['Technical Proficeny']),
                 detailed_description=str(row['Detailed Description']),
                 urgency=str(row['Urgency']),
-                language=str(row['Language'])
+                language=str(row['Language']),
+                assigned=bool(row['assigned']) if pd.notna(row['assigned']) else False
             )
             tickets.append(ticket)
         return tickets
