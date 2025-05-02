@@ -86,20 +86,39 @@ class AzureConnection:
         try:
             # Format the prompt
             prompt = self._format_matching_prompt(payload)
-            
-            # Get completion from Azure OpenAI
+
+            if not prompt or not isinstance(prompt, str):
+                logger.error("Prompt generation failed: prompt is empty or invalid.")
+                return {}
+
             response = self.client.chat.completions.create(
                 model=self.deployment,
                 messages=[
-                    {"role": "system", "content": "You are an expert at matching support tickets with the most suitable ambassadors based on their skills, availability, and historical performance."},
-                    {"role": "user", "content": prompt}
+                    {
+                        "role": "system",
+                        "content": "You are an assistant that selects the best ambassador for a support ticket based on skills, workload, and CSAT. Reply only in valid JSON."
+                    },
+                    {
+                        "role": "user",
+                        "content": prompt  # ⚠️ ahora garantizado que es string no vacío
+                    }
                 ],
                 temperature=0.7,
-                max_tokens=500
+                max_tokens=600
             )
+
             
             # Parse the response
-            result = json.loads(response.choices[0].message.content)
+            content = response.choices[0].message.content
+            logger.debug(f"Azure response raw content:\n{content}")
+
+            try:
+                result = json.loads(content)
+                print(result)
+            except json.JSONDecodeError:
+                logger.warning("Respuesta no es JSON válido. Devolviendo texto como 'raw_response'.")
+                return {"raw_response": content}
+
             
             return {
                 "best_match": {
@@ -113,42 +132,32 @@ class AzureConnection:
             logger.error(f"Error in Azure OpenAI matching: {str(e)}")
             return {}
 
+
+
     def _format_matching_prompt(self, payload: Dict[str, Any]) -> str:
-        """Format the prompt for Azure OpenAI."""
         ticket = payload["ticket"]
         ambassadors = payload["available_ambassadors"]
-        
+
         prompt = f"""
-        Please analyze the following ticket and available ambassadors to find the best match.
-        
-        TICKET:
-        - Case Number: {ticket['case_number']}
-        - Line of Business: {ticket['line_of_business']}
-        - Product: {ticket['primary_product']}
-        - Priority: {ticket['priority']}
-        - Complexity: {ticket['complexity']}
-        - State: {ticket['current_state']}
-        
-        AVAILABLE AMBASSADORS:
+    You are an AI assistant that must select the most suitable ambassador for a support ticket.
+
+    You will receive:
+    - One support TICKET with metadata.
+    - A list of AVAILABLE AMBASSADORS with their attributes.
+
+    ⚠️ Respond ONLY with a valid JSON object in the following format (without any explanation or text before or after):
+
+    {{
+    "ambassador_id": "<best_match_id>",
+    "explanation": "<short_reason>",
+    "confidence_score": <float between 0.0 and 1.0>
+    }}
+
+    TICKET:
+    {json.dumps(ticket, indent=2)}
+
+    AVAILABLE AMBASSADORS:
+    {json.dumps(ambassadors, indent=2)}
         """
-        
-        for amb in ambassadors:
-            prompt += f"""
-            Ambassador {amb['name']}:
-            - Skills: {', '.join(amb['skills'])}
-            - CSAT Score: {amb['csat_score']}
-            - Expertise Level: {amb['expertise_level']}
-            - Current Workload: {amb['current_workload']}
-            """
-        
-        prompt += """
-        Please provide your analysis in the following JSON format:
-        {
-            "ambassador_id": "ID of the best matching ambassador",
-            "explanation": "Detailed explanation of why this ambassador is the best match",
-            "confidence_score": 0.95
-        }
-        """
-        
-        return prompt
+        return prompt.strip()
 

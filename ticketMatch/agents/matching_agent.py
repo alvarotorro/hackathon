@@ -5,6 +5,8 @@ from agents.ambassador_profiling_agent import AmbassadorProfilingAgent
 from agents.availability_agent import AvailabilityAgent
 from core.azure_connection import AzureConnection
 import json
+from datetime import datetime
+
 
 class MatchingAgent:
     def __init__(self, azure_connection: AzureConnection):
@@ -140,7 +142,13 @@ class MatchingAgent:
                 "case_number": ticket.case_number,
                 "line_of_business": ticket.line_of_business,
                 "primary_product": ticket.primary_product,
-                "creation_timestamp": ticket.creation_timestamp.isoformat(),
+                "creation_timestamp": (
+                    ticket.creation_timestamp.isoformat()
+                    if isinstance(ticket.creation_timestamp, datetime)
+                    else str(ticket.creation_timestamp) if ticket.creation_timestamp
+                    else None
+                ),
+
                 "current_state": ticket.current_state,
                 "priority": ticket.priority,
                 "complexity": ticket.complexity

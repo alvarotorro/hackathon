@@ -1,1 +1,16 @@
-[]
+[
+  {
+    "ticket_id": "TCKT007",
+    "assigned_ambassador": "Marta Ruiz",
+    "matching_reason": "Marta Ruiz has the highest CSAT score among available ambassadors.",
+    "confidence_score": 0.9,
+    "status": "Assigned"
+  },
+  {
+    "ticket_id": "TCKT008",
+    "assigned_ambassador": "Marta Ruiz",
+    "matching_reason": "Marta Ruiz has the highest CSAT score among available ambassadors.",
+    "confidence_score": 0.95,
+    "status": "Assigned"
+  }
+]

@@ -19,6 +19,10 @@ class Ticket:
     assigned: bool = False
     assignment_datetime: Optional[datetime] = None
     assigned_ambassador_id: Optional[str] = None
+    creation_timestamp: Optional[datetime] = None
+    current_state: Optional[str] = None
+    priority: Optional[str] = None
+    complexity: Optional[str] = None
 
 @dataclass
 class Ambassador:
@@ -30,6 +34,10 @@ class Ambassador:
     case_history: List[str] = None
     current_tickets: int = 0
     max_active_tickets: int = 3  # Default value
+    skills: List[str] = None
+    expertise_level: str = "intermediate"
+    current_workload: int = 0
+    
 
 @dataclass
 class Shift:
