@@ -3,12 +3,15 @@ from core.data_models import Ticket, Ambassador, Shift
 from agents.ticket_analysis_agent import TicketAnalysisAgent
 from agents.ambassador_profiling_agent import AmbassadorProfilingAgent
 from agents.availability_agent import AvailabilityAgent
+from core.azure_connection import AzureConnection
+import json
 
 class MatchingAgent:
-    def __init__(self):
+    def __init__(self, azure_connection: AzureConnection):
         self.ticket_agent = TicketAnalysisAgent()
         self.profiling_agent = AmbassadorProfilingAgent()
         self.availability_agent = AvailabilityAgent()
+        self.azure_connection = azure_connection
         self.assigned_tickets: Dict[str, Tuple[str, str]] = {}  # ticket_id -> (ambassador_id, explanation)
 
     def process_tickets(self, tickets: List[Ticket], ambassadors: List[Ambassador], shifts: List[Shift]) -> Dict[str, Tuple[str, str]]:
@@ -119,3 +122,65 @@ class MatchingAgent:
         """Assign a ticket to an ambassador."""
         ticket.assigned = True
         ticket.assigned_ambassador_id = ambassador_id
+
+    def process_ticket_with_azure(self, ticket: Ticket, available_ambassadors: List[Ambassador]) -> Optional[Tuple[str, str, float]]:
+        """
+        Process a single ticket using Azure AI for matching.
+        
+        Args:
+            ticket: The ticket to be matched
+            available_ambassadors: List of available ambassadors
+            
+        Returns:
+            Tuple containing (ambassador_id, explanation, confidence_score) or None if no match found
+        """
+        try:
+            # Prepare ticket data
+            ticket_data = {
+                "case_number": ticket.case_number,
+                "line_of_business": ticket.line_of_business,
+                "primary_product": ticket.primary_product,
+                "creation_timestamp": ticket.creation_timestamp.isoformat(),
+                "current_state": ticket.current_state,
+                "priority": ticket.priority,
+                "complexity": ticket.complexity
+            }
+
+            # Prepare ambassador data
+            ambassador_data = []
+            for ambassador in available_ambassadors:
+                ambassador_data.append({
+                    "id": ambassador.id,
+                    "name": ambassador.name,
+                    "skills": ambassador.skills,
+                    "csat_score": ambassador.csat_score,
+                    "expertise_level": ambassador.expertise_level,
+                    "current_workload": ambassador.current_workload
+                })
+
+            # Prepare payload for Azure AI
+            payload = {
+                "ticket": ticket_data,
+                "available_ambassadors": ambassador_data
+            }
+
+            # Send request to Azure AI
+            response = self.azure_connection.get_match(payload)
+            
+            if response and "best_match" in response:
+                match = response["best_match"]
+                return (
+                    match["ambassador_id"],
+                    match["explanation"],
+                    match["confidence_score"]
+                )
+            
+            return None
+
+        except Exception as e:
+            print(f"Error processing ticket {ticket.case_number} with Azure AI: {str(e)}")
+            return None
+
+    def get_assignment_history(self) -> dict:
+        """Return the history of all ticket assignments."""
+        return self.assigned_tickets
