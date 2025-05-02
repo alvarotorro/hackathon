@@ -152,5 +152,12 @@ def main():
         print_error(f"An error occurred: {str(e)}")
         return
 
+
+import argparse
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Ticket Matcher")
+    parser.add_argument("excel_file", type=str, help="Ruta al archivo Excel de entrada")
+    args = parser.parse_args()
+    excel_file_path = args.excel_file
+
     main()
