@@ -2,7 +2,7 @@
   {
     "ticket_id": "TCKT007",
     "assigned_ambassador": "Marta Ruiz",
-    "matching_reason": "Marta Ruiz has the highest CSAT score among available ambassadors.",
+    "matching_reason": "Marta has the highest CSAT score, indicating superior customer satisfaction.",
     "confidence_score": 0.9,
     "status": "Assigned"
   },

@@ -1,4 +1,4 @@
-# Código base para azure_connection.py con el contenido que el usuario proporcionó
+# Base code for azure_connection.py with the content provided by the user
 
 import os
 import logging
@@ -100,7 +100,7 @@ class AzureConnection:
                     },
                     {
                         "role": "user",
-                        "content": prompt  # ⚠️ ahora garantizado que es string no vacío
+                        "content": prompt  # Now guaranteed to be a non-empty string
                     }
                 ],
                 temperature=0.7,
@@ -116,7 +116,7 @@ class AzureConnection:
                 result = json.loads(content)
                 print(result)
             except json.JSONDecodeError:
-                logger.warning("Respuesta no es JSON válido. Devolviendo texto como 'raw_response'.")
+                logger.warning("Response is not valid JSON. Returning text as 'raw_response'.")
                 return {"raw_response": content}
 
             

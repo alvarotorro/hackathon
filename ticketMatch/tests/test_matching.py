@@ -64,7 +64,7 @@ def test_matching_system():
                 urgency="High",
                 language="English"
             ),
-            # Medium urgency Outlook issue in Spanish
+            # Medium urgency Outlook issue in English
             Ticket(
                 case_number="TEST-002",
                 line_of_business="Business Advisor Reactive",
@@ -77,7 +77,7 @@ def test_matching_system():
                 technical_proficiency="Intermediate",
                 detailed_description="Outlook calendar not syncing with mobile device",
                 urgency="Medium",
-                language="Spanish"
+                language="English"
             )
         ]
 

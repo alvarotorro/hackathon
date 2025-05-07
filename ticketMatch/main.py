@@ -31,34 +31,34 @@ def main(excel_file_path: str):
     print(f"\n{Fore.BLUE}🚀 Ticket Matchmaker - Azure AI Powered{Style.RESET_ALL}\n")
 
     try:
-        # 1. Conexión Azure
-        print_step("AZURE", "Inicializando conexión con Azure AI...")
+        # 1. Azure Connection
+        print_step("AZURE", "Initializing Azure AI connection...")
         azure_connection = AzureConnection()
-        print_success("Conexión con Azure establecida")
+        print_success("Azure connection established")
 
-        # 2. Cargar Excel
-        print_step("DATA", f"Cargando datos desde {excel_file_path} ...")
+        # 2. Load Excel
+        print_step("DATA", f"Loading data from {excel_file_path} ...")
         data_loader = DataLoader(excel_file_path)
         tickets, ambassadors, shifts = data_loader.load_data()
 
-        # Filtrar solo los no asignados
+        # Filter only unassigned ones
         unassigned_tickets = [ticket for ticket in tickets if not ticket.assigned]
-        print_success(f"Cargados {len(unassigned_tickets)} tickets no asignados de {len(tickets)} totales")
+        print_success(f"Loaded {len(unassigned_tickets)} unassigned tickets out of {len(tickets)} total")
 
-        print("\nEjemplos:")
+        print("\nExamples:")
         for ticket in unassigned_tickets[:3]:
             print(f"  - Case {ticket.case_number}: {ticket.line_of_business}, {ticket.primary_product}")
 
-        # 3. Inicializar agentes
-        print_step("AGENTS", "Inicializando agentes...")
+        # 3. Initialize agents
+        print_step("AGENTS", "Initializing agents...")
         ticket_agent = TicketAnalysisAgent()
         ambassador_agent = AmbassadorProfilingAgent()
         availability_agent = AvailabilityAgent()
         matching_agent = MatchingAgent(azure_connection)
-        print_success("Agentes listos")
+        print_success("Agents ready")
 
-        # 4. Procesar tickets
-        print_step("PROCESSING", f"Procesando {len(unassigned_tickets)} tickets...")
+        # 4. Process tickets
+        print_step("PROCESSING", f"Processing {len(unassigned_tickets)} tickets...")
         unassigned_tickets = ticket_agent.analyze_tickets(tickets)
         ambassador_profiles = ambassador_agent.analyze_conversation_history(ambassadors)
         results = []
@@ -68,7 +68,7 @@ def main(excel_file_path: str):
             available_ambassadors = availability_agent.check_availability(ticket, ambassadors, shifts)
 
             if not available_ambassadors:
-                print_warning(f"No hay embajadores disponibles para el ticket {ticket.case_number}")
+                print_warning(f"No ambassadors available for ticket {ticket.case_number}")
                 results.append({
                     'ticket_id': ticket.case_number,
                     'assigned_ambassador': None,
@@ -77,12 +77,12 @@ def main(excel_file_path: str):
                 })
                 continue
 
-            # Convertir diccionario a lista de objetos Ambassador
+            # Convert dictionary to list of Ambassador objects
             available_ids = list(available_ambassadors.keys())
             available_objects = [a for a in ambassadors if a.id in available_ids]
 
             # Azure Matching
-            print_step("MATCHING", "Buscando mejor match con Azure AI...")
+            print_step("MATCHING", "Finding best match with Azure AI...")
             match_result = matching_agent.process_ticket_with_azure(ticket, available_objects)
 
             if match_result:
@@ -100,7 +100,7 @@ def main(excel_file_path: str):
                     'status': 'Assigned'
                 })
             else:
-                print_warning(f"No match encontrado para ticket {ticket.case_number}")
+                print_warning(f"No match found for ticket {ticket.case_number}")
                 results.append({
                     'ticket_id': ticket.case_number,
                     'assigned_ambassador': None,
@@ -109,8 +109,8 @@ def main(excel_file_path: str):
                     'status': 'Unassigned'
                 })
 
-        # 5. Guardar resultados
-        print_step("SAVING", "Guardando resultados en Excel...")
+        # 5. Save results
+        print_step("SAVING", "Saving results to Excel...")
         try:
             os.makedirs("output", exist_ok=True)
             df = pd.DataFrame(results)
@@ -122,16 +122,16 @@ def main(excel_file_path: str):
             print_success("Detailed results saved to assignment_details.json")
 
         except Exception as e:
-            print_error(f"Error al guardar resultados: {str(e)}")
+            print_error(f"Error saving results: {str(e)}")
 
-        print_success("\nTodos los tickets procesados correctamente.")
+        print_success("\nAll tickets processed successfully.")
 
     except Exception as e:
-        print_error(f"Error general: {str(e)}")
+        print_error(f"General error: {str(e)}")
 
-# Argumento CLI
+# CLI Argument
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ticket Matcher")
-    parser.add_argument("excel_file", type=str, help="Ruta al archivo Excel de entrada")
+    parser.add_argument("excel_file", type=str, help="Path to input Excel file")
     args = parser.parse_args()
     main(args.excel_file)
